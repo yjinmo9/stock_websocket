@@ -16,7 +16,7 @@ class StockPublisher(
 ) {
 
     // [방송 큐] "1초(1000ms)마다 방송 내보냅니다!"
-    @Scheduled(fixedRate = 1000)
+    // @Scheduled(fixedRate = 1000)
     fun publishStockData() {
         try {
             // 1. 기자 연결: "삼성전자(005930) 지금 얼마입니까?"

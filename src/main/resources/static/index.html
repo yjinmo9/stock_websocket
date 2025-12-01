@@ -1,76 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>주식 실시간 상황판</title>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"> <title>주식 검색 시스템</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
-        body { font-family: 'Arial', sans-serif; padding: 20px; background-color: #f0f2f5; }
-        h1 { color: #333; }
-        #status { font-weight: bold; color: orange; margin-bottom: 20px; }
-        .stock-card {
-            background: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.2em;
-        }
-        .price { font-weight: bold; color: #d32f2f; }
-        .time { font-size: 0.8em; color: #888; }
+        .box { border: 1px solid #ccc; padding: 20px; margin: 20px; width: 400px; border-radius: 10px;}
+        input { padding: 5px; width: 200px; }
+        button { padding: 5px 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-<h1>📈 실시간 주식 중계석</h1>
-<div id="status">서버 연결 중...</div>
+<h1>📈 주식 요청 시스템</h1>
 
-<div id="stock-list"></div>
+<div class="box" style="background-color: #f0f8ff;">
+    <h3>🔍 종목 검색 (Payload 발송)</h3>
+    <p>보고 싶은 종목 코드를 입력하세요.</p>
+    <input type="text" id="symbol-input" placeholder="예: 005930 (삼성전자)">
+    <button onclick="sendSearch()">요청하기</button>
+</div>
+
+<div class="box">
+    <h3>📩 수신된 결과</h3>
+    <h2 id="search-result" style="color: blue;">결과 대기중...</h2>
+</div>
 
 <script>
-    var socket = new SockJS('/ws-stock');
-    var stompClient = Stomp.over(socket);
+    var stompClient = null;
 
-    stompClient.connect({}, function (frame) {
-        document.getElementById("status").innerText = "🟢 서버와 연결됨 (실시간 수신 중)";
-        document.getElementById("status").style.color = "green";
+    function connect() {
+        var socket = new SockJS('/ws-stock');
+        stompClient = Stomp.over(socket);
 
-        // 구독 시작!
-        stompClient.subscribe('/topic/stocks', function (message) {
-            var stock = JSON.parse(message.body);
-            updateStockUI(stock);
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+
+            // [구독] 서버가 "/topic/search-result"로 답장 주면 여기서 받음
+            stompClient.subscribe('/topic/search-result', function (message) {
+                var stock = JSON.parse(message.body);
+                showSearchResult(stock);
+            });
         });
-    });
-
-    function updateStockUI(stock) {
-        var list = document.getElementById("stock-list");
-
-        // 이미 화면에 있는 종목인지 확인 (ID로 찾기)
-        var existingItem = document.getElementById(stock.symbol);
-
-        var htmlContent = `
-                <span><strong>${stock.symbol}</strong></span>
-                <span class="price">${stock.price.toLocaleString()}원</span>
-                <span class="time">${stock.timestamp}</span>
-            `;
-
-        if (existingItem) {
-            // 이미 있으면 내용만 업데이트 (깜빡임 효과)
-            existingItem.innerHTML = htmlContent;
-            existingItem.style.backgroundColor = "#fff3e0"; // 업데이트 시 살짝 노란색
-            setTimeout(() => existingItem.style.backgroundColor = "white", 300);
-        } else {
-            // 없으면 새로 추가
-            var newItem = document.createElement("div");
-            newItem.id = stock.symbol; // 나중에 찾기 쉽게 ID 부여
-            newItem.className = "stock-card";
-            newItem.innerHTML = htmlContent;
-            list.prepend(newItem); // 맨 위에 추가
-        }
     }
+
+    // [핵심 기능] 버튼 누르면 실행!
+    function sendSearch() {
+        var symbol = document.getElementById("symbol-input").value;
+
+        if(symbol === "") {
+            alert("종목 코드를 입력하세요!");
+            return;
+        }
+
+        console.log("보내는 Payload: " + symbol);
+
+        // 1. 엔드포인트: "/app/search"
+        // 2. 페이로드: {'symbol': 입력한값} (JSON으로 포장)
+        stompClient.send("/app/search", {}, JSON.stringify({'symbol': symbol}));
+    }
+
+    function showSearchResult(stock) {
+        document.getElementById("search-result").innerText =
+            "[" + stock.symbol + "] " + stock.price + "원";
+    }
+
+    connect(); // 사이트 켜자마자 연결
 </script>
 </body>
 </html>
