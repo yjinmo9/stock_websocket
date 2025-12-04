@@ -82,4 +82,41 @@ class KisService(
             return 0.0
         }
     }
+
+    // [수정] 3. 과거 차트 데이터 조회 (일자별 시세)
+    fun getDailyChartData(symbol: String): List<KisDailyPriceOutput> {
+        val token = getAccessToken()
+        if (token.isEmpty()) return emptyList()
+
+        // [변경 1] 주소를 'inquire-daily-price'로 변경 (이게 정확합니다!)
+        // 날짜 파라미터가 없으면 자동으로 최근 30일치 데이터를 줍니다.
+        val url = "${config.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-price?" +
+                "FID_COND_MRKT_DIV_CODE=J&" +
+                "FID_INPUT_ISCD=$symbol&" +
+                "FID_PERIOD_DIV_CODE=D&" +
+                "FID_ORG_ADJ_PRC=0"
+
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            set("authorization", "Bearer $token")
+            set("appkey", config.appKey.trim())
+            set("appsecret", config.appSecret.trim())
+            // [변경 2] TR_ID를 'FHKST01010400' (국내주식 기간별시세)로 변경
+            set("tr_id", "FHKST01010400")
+            set("custtype", "P")
+        }
+
+        val entity = HttpEntity<String>(headers)
+
+        try {
+            val response = restTemplate.exchange(url, HttpMethod.GET, entity, KisDailyPriceResponse::class.java)
+            // [변경 3] DTO에서 이름을 output으로 바꿨으므로 여기도 output으로 변경
+            return response.body?.output ?: emptyList()
+        } catch (e: Exception) {
+            println("💥 차트 데이터 조회 실패: ${e.message}")
+            return emptyList()
+        }
+    }
+
+
 }

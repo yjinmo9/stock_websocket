@@ -6,37 +6,42 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
-
-// 앵커(Publisher)
+import java.util.concurrent.ConcurrentSkipListSet
 
 @Service
 class StockPublisher(
-    private val template: SimpMessagingTemplate, // 방송용 마이크
-    private val kisService: KisService           // 현장 기자 연결
+    private val template: SimpMessagingTemplate,
+    private val kisService: KisService
 ) {
+    // [변경] 동적 구독 리스트 (Set)
+    private val activeSymbols = ConcurrentSkipListSet<String>()
 
-    // [방송 큐] "1초(1000ms)마다 방송 내보냅니다!"
-    // @Scheduled(fixedRate = 1000)
+    fun addSymbol(symbol: String) {
+        activeSymbols.add(symbol)
+        println("✅ 구독 추가: $symbol")
+    }
+
+    fun removeSymbol(symbol: String) {
+        activeSymbols.remove(symbol)
+        println("🗑️ 구독 취소: $symbol")
+    }
+
+    @Scheduled(fixedRate = 1000)
     fun publishStockData() {
-        try {
-            // 1. 기자 연결: "삼성전자(005930) 지금 얼마입니까?"
-            val price = kisService.getCurrentPrice("005930")
+        if (activeSymbols.isEmpty()) return
 
-            // 2. 자막 제작: 예쁜 상자에 담기
-            val stockData = StockPrice(
-                symbol = "SAMSUNG",
-                price = price,
-                timestamp = LocalDateTime.now()
-            )
+        activeSymbols.forEach { symbol ->
+            try {
+                val price = kisService.getCurrentPrice(symbol)
+                val stockData = StockPrice(symbol, price, LocalDateTime.now())
 
-            // 3. 송출: "/topic/stocks" 채널 시청자들에게 발사!
-            template.convertAndSend("/topic/stocks", stockData)
+                // [변경] 종목별 전용 채널로 송출
+                template.convertAndSend("/topic/stock/$symbol", stockData)
 
-            // (방송국 모니터링용 로그)
-            println("🎥 방송 송출 완료: 삼성전자 ${price}원")
-
-        } catch (e: Exception) {
-            println("💥 방송 사고 발생: ${e.message}")
+                Thread.sleep(200) // 과부하 방지
+            } catch (e: Exception) {
+                println("💥 방송 에러($symbol): ${e.message}")
+            }
         }
     }
 }
