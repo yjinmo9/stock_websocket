@@ -5,15 +5,16 @@ import io.swagger.v3.oas.models.info.Info
 import io.swagger.v3.oas.models.tags.Tag
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import java.util.List
 
 @Configuration
 class SwaggerConfig {
 
+    // [중요] 함수 이름을 'customOpenAPI'로 지어서 스프링 기본 설정과의 충돌을 피합니다.
     @Bean
     fun customOpenAPI(): OpenAPI {
 
-        val serverIp = "3.26.94.208"
+        // [설정] 형님이 연결해준 도메인 주소
+        val serverUrl = "ws-stock.froggy1014.dev"
 
         return OpenAPI()
             .info(
@@ -29,46 +30,36 @@ class SwaggerConfig {
             )
             .tags(
                 listOf(
-
                     // -----------------------------
-                    // 1) WebSocket Tag
+                    // 1) 통합 가이드 (WebSocket + REST)
                     // -----------------------------
                     Tag()
-                        //.name("WebSocket")
+                        .name("API Guide") // 태그 이름이 있어야 접을 수 있습니다.
                         .description(
                             """
                             # 🔌 WebSocket Guide
 
                             ## 📍 Endpoint
-                            ```
-                            ws://$serverIp:8080/ws-stock
-                            ```
-                            - 프로토콜: STOMP, SockJS  
-                            - 용도: 실시간 주가 스트리밍
+                            - **URL**: `wss://$serverUrl/ws-stock`
+                            - **Protocol**: STOMP (over SockJS)
+                            - **용도**: 실시간 주가 스트리밍 (1초 간격)
 
                             ---
 
-                            ## 🎧 1) 구독(Subscribe)
-                            실시간 가격을 수신하려면 아래 채널을 구독하세요.
+                            ## 🎧 1) 듣기 (Subscribe)
+                            데이터를 수신하려면 해당 종목의 채널을 구독하세요.
 
-                            ```
-                            /topic/stock/{symbol}
-                            ```
-                            예시:
-                            ```
-                            /topic/stock/005930
-                            ```
+                            - **Path**: `/topic/stock/{symbol}`
+                            - **예시**: `/topic/stock/005930` (삼성전자)
 
                             ---
 
-                            ## 📤 2) 요청(Publish)
-                            종목 실시간 스트리밍 요청:
+                            ## 📤 2) 말하기 (Publish)
+                            서버에 구독/취소 요청을 보냅니다.
 
-                            ```
-                            /app/subscribe
-                            ```
+                            - **Path**: `/app/subscribe`
 
-                            ### ➕ 구독 추가
+                            ### ➕ 구독 추가 (페이지 진입 시)
                             ```json
                             {
                               "symbol": "005930",
@@ -76,7 +67,7 @@ class SwaggerConfig {
                             }
                             ```
 
-                            ### ➖ 구독 해제
+                            ### ➖ 구독 해제 (페이지 이탈 시)
                             ```json
                             {
                               "symbol": "005930",
@@ -84,36 +75,37 @@ class SwaggerConfig {
                             }
                             ```
                             
+                            ---
                             
-                        
-                            
-                    
-                    
                             # 📊 Chart Data (REST)
 
                             ## 📍 일봉 데이터 조회
+                            차트의 뼈대가 되는 과거 데이터를 가져옵니다.
+                            
+                            - **URL**: `https://$serverUrl/api/v1/chart/{symbol}`
+                            - **Method**: `GET`
+                            
+                            **반환 데이터 예시:**
+                            ```json
+                            [
+                              {
+                                "stck_bsop_date": "20240101",
+                                "stck_clpr": "75000",
+                                "acml_vol": "1500000"
+                              },
+                              ...
+                            ]
                             ```
-                            GET /api/v1/chart/{symbol}
-                            ```
-
-                            예시:
-                            ```
-                            GET /api/v1/chart/005930
-                            ```
-
-                            반환 항목:
-                            - 날짜  
-                            - 시가 / 고가 / 저가 / 종가  
-                            - 거래량  
+                            
+                            ---
                             
                             # 🔍 Server Status
 
                             ## 📍 서버 상태 확인
-                            ```
-                            GET /api/test/status
-                            ```
+                            - **URL**: `https://$serverUrl/api/test/status`
+                            - **Method**: `GET`
 
-                            응답 예시:
+                            **응답 예시:**
                             ```json
                             {
                               "status": "OK",
@@ -126,5 +118,3 @@ class SwaggerConfig {
             )
     }
 }
-
-
