@@ -2,6 +2,7 @@ package com.example.stock.config
 
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.servers.Server // [필수] Server 객체 import
 import io.swagger.v3.oas.models.tags.Tag
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -9,14 +10,15 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class SwaggerConfig {
 
-    // [중요] 함수 이름을 'customOpenAPI'로 지어서 스프링 기본 설정과의 충돌을 피합니다.
     @Bean
     fun customOpenAPI(): OpenAPI {
 
-        // [설정] 형님이 연결해준 도메인 주소
-        val serverUrl = "ws-stock.froggy1014.dev"
+        // 형님이 연결해준 도메인
+        val domain = "ws-stock.froggy1014.dev"
 
         return OpenAPI()
+            // ▼▼▼ [핵심] 이 줄이 있어야 버튼 눌렀을 때 HTTPS로 나갑니다! ▼▼▼
+            .addServersItem(Server().url("https://$domain").description("Production Server (HTTPS)"))
             .info(
                 Info()
                     .title("📡 Stock Real-Time & Chart API")
@@ -30,17 +32,14 @@ class SwaggerConfig {
             )
             .tags(
                 listOf(
-                    // -----------------------------
-                    // 1) 통합 가이드 (WebSocket + REST)
-                    // -----------------------------
                     Tag()
-                        .name("API Guide") // 태그 이름이 있어야 접을 수 있습니다.
+                        .name("API Guide")
                         .description(
                             """
                             # 🔌 WebSocket Guide
 
                             ## 📍 Endpoint
-                            - **URL**: `wss://$serverUrl/ws-stock`
+                            - **URL**: `wss://$domain/ws-stock`
                             - **Protocol**: STOMP (over SockJS)
                             - **용도**: 실시간 주가 스트리밍 (1초 간격)
 
@@ -82,7 +81,7 @@ class SwaggerConfig {
                             ## 📍 일봉 데이터 조회
                             차트의 뼈대가 되는 과거 데이터를 가져옵니다.
                             
-                            - **URL**: `https://$serverUrl/api/v1/chart/{symbol}`
+                            - **URL**: `https://$domain/api/v1/chart/{symbol}`
                             - **Method**: `GET`
                             
                             **반환 데이터 예시:**
@@ -102,7 +101,7 @@ class SwaggerConfig {
                             # 🔍 Server Status
 
                             ## 📍 서버 상태 확인
-                            - **URL**: `https://$serverUrl/api/test/status`
+                            - **URL**: `https://$domain/api/test/status`
                             - **Method**: `GET`
 
                             **응답 예시:**
